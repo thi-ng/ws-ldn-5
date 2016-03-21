@@ -1,6 +1,8 @@
 (ns ws-ldn-5.core
   (:require
    [ws-ldn-5.utils :as utils]
+   [ws-ldn-5.shapes01]
+   [ws-ldn-5.shapes02]
    [thi.ng.math.core :as m]
    [thi.ng.geom.core :as g]
    [thi.ng.geom.vector :as v :refer [vec2]]
