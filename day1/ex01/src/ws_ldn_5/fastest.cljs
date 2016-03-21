@@ -1,4 +1,4 @@
-(ns ws-ldn-5.fast
+(ns ws-ldn-5.fastest
   (:require-macros
    [thi.ng.math.macros :as mm])
   (:require

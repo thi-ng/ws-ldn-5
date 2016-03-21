@@ -63,10 +63,10 @@
 
 (defn life-step
   [grid x y cell]
-  (let [;;neighbors (sum-neighbors grid x y) ;; 594ms
-        ;;neighbors (sum-neighbors-transduce grid x y) ;; 780ms -> 680 ms
+  (let [neighbors (sum-neighbors grid x y) ;; 594ms (advanced compile, else x2)
+        ;;neighbors (sum-neighbors-transduce grid x y) ;; 780ms
         ;;neighbors (sum-neighbors-no-reduce grid x y) ;; 270ms
-        neighbors (sum-neighbors-nth grid x y) ;; 128ms
+        ;;neighbors (sum-neighbors-nth grid x y) ;; 128ms
         ]
     (if (pos? cell)
       (if (or (== neighbors 2) (== neighbors 3)) 1 0)
