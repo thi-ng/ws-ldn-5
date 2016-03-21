@@ -12,3 +12,4 @@ pom.xml.asc
 day1/ex01/resources/public/js/compiled
 day1/ex02/resources/public/js/compiled
 day1/ex03/resources/public/js/compiled
+figwheel_server.log
