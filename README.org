@@ -1,0 +1,56 @@
+* WS-LDN-5
+
+Hi-performace Clojurescript w/ thi.ng, WebGL, Web Workers, WebSockets & asm.js
+
+* Repository
+
+#+BEGIN_SRC shell
+git clone git@bitbucket.org:postspectacular/ws-ldn-5.git
+#+END_SRC
+
+Will be moved to GitHub later...
+
+* Day 1
+
+** Overview
+
+- CLJS requires different optimization strategies than Clojure
+- Focus on CPU-bound issues
+- Hard time limits due to human perception & UI usability
+- Graphics, especially if animated, often high computational demands
+
+** ex01 - Game of Life
+
+- basic demo of idiomatic CLJS code performance
+- various ways of optimizing
+- benefit from constrained mutability
+- intro to typed arrays, benefits
+
+Also:
+
+- use thi.ng/domus for easy (non-React) DOM creation/manipulation
+- use thi.ng/strf for string formatting / parsing
+
+[[file:day1/ex01/src/ws_ldn_5/][Source]]
+
+** ex02 - SVG visualizations & animation
+
+- SVG is powerful, easy to generate, but highly inefficient for realtime
+- Most geometry data only passed via strings (DOM attributes)
+- Requires 2x work, 3x memory (lots of string concat, then parsing + rendering + compositing)
+- Usually 2D only, but can use thi.ng/geom to render as 3D (w/ customizable shading)
+
+[[file:day1/ex02/src/ws_ldn_5/][Source]]
+
+** ex03 - WebGL basics
+
+[[file:day1/ex03/src/ws_ldn_5/][Source]]
+
+*** WebGL & GLSL specs
+
+- https://www.khronos.org/registry/webgl/specs/latest/1.0/
+- https://www.khronos.org/registry/gles/specs/2.0/GLSL_ES_Specification_1.0.17.pdf
+
+* Day 2
+
+* Day 3
