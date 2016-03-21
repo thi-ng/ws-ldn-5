@@ -11,3 +11,4 @@ pom.xml.asc
 .hg/
 day1/ex01/resources/public/js/compiled
 day1/ex02/resources/public/js/compiled
+day1/ex03/resources/public/js/compiled
