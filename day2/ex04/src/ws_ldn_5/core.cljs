@@ -18,6 +18,7 @@
    [thi.ng.geom.vector :as v :refer [vec2 vec3]]
    [thi.ng.geom.matrix :as mat :refer [M44]]
    [thi.ng.geom.ptf :as ptf]
+   [thi.ng.geom.utils :as gu]
    [thi.ng.color.core :as col]
    [thi.ng.color.gradients :as grad]
    [thi.ng.domus.core :as dom]
@@ -25,7 +26,32 @@
 
 (enable-console-print!)
 
-(defonce app (reagent/atom {}))
+(defonce app
+  (reagent/atom
+   {:player {:speed 0}}))
+
+(defn camera-path
+  [points frames]
+  (let [up (nth frames 2)]
+    {:pos       points
+     :pos-index (gu/arc-length-index points)
+     :up        up
+     :up-index  (gu/arc-length-index up)}))
+
+(defn camera-at-path-pos
+  [{:keys [pos pos-index up up-index]} t delta view-rect]
+  (let [t      (mod t 1.0)
+        t'     (mod (+ t delta) 1.0)
+        eye    (gu/point-at t pos pos-index)
+        target (gu/point-at t' pos pos-index)
+        up     (m/normalize (gu/point-at t up up-index))]
+    (cam/perspective-camera
+     {:eye    eye
+      :target target
+      :up     up
+      :fov    90
+      :aspect view-rect
+      :far    10})))
 
 (defn gl-component
   [props]
@@ -37,30 +63,39 @@
             view-rect (gl/get-viewport-rect gl)
             model     (-> (wsmesh/knot-simple)
                           (gl/as-webgl-buffer-spec {})
-                          (cam/apply (cam/perspective-camera {:eye (vec3 0 0 5) :fov 90 :aspect view-rect}))
+                          #_(cam/apply (cam/perspective-camera {:eye (vec3 0 0 5) :fov 90 :aspect view-rect}))
                           (assoc :shader (sh/make-shader-from-spec gl wsshader/tunnel-shader))
                           (gl/make-buffers-in-spec gl glc/static-draw)
                           (time))
-            tex       (wstex/gradient-texture gl 4 1024 {:wrap [glc/clamp-to-edge glc/repeat]})]
-        (reagent/set-state this {:anim true})
+            tex       (wstex/gradient-texture gl 4 1024 {:wrap [glc/clamp-to-edge glc/repeat]})
+            cam       (camera-path wsmesh/path-points wsmesh/path-frames)]
+        (reagent/set-state this {:active true})
         (anim/animate
          (fn [t frame]
-           (gl/bind tex 0)
-           (doto gl
-             (gl/set-viewport view-rect)
-             (gl/clear-color-and-depth-buffer 0.0 0.0 0.1 1 1)
-             (gl/draw-with-shader
-              (-> model
-                  (update :uniforms assoc
-                          :time t
-                          :m (+ 0.21 (* 0.2 (Math/sin (* t 0.5))))
-                          :model (-> M44 (g/rotate-x (* t 0.36)) (g/rotate-y t)))
-                  (gl/inject-normal-matrix :model :view :normalMat))))
-           (:anim (reagent/state this))))))
+           (let [cam           (camera-at-path-pos cam (* t 0.025) 0.02 view-rect)
+                 tsin          (Math/sin (* t 0.2))
+                 hue           (- (* 0.25 tsin) 0.1)
+                 lum           (m/map-interval tsin -1 1 0.1 0.5)
+                 [bgr bgg bgb] @(col/as-rgba (col/hsla hue 1 lum))]
+             (gl/bind tex 0)
+             (doto gl
+               (gl/set-viewport view-rect)
+               (gl/clear-color-and-depth-buffer bgr bgg bgb 1 1)
+               (gl/draw-with-shader
+                (-> model
+                    (cam/apply cam)
+                    (update :uniforms assoc
+                            :time t
+                            :Ka [bgr bgg bgb]
+                            :Kf [bgr bgg bgb]
+                            :lightPos (:eye cam)
+                            :model M44)
+                    (gl/inject-normal-matrix :model :view :normalMat)))))
+           (:active (reagent/state this))))))
     :component-will-unmount
     (fn [this]
       (debug "unmount GL")
-      (reagent/set-state this {:anim false}))
+      (reagent/set-state this {:active false}))
     :reagent-render
     (fn [_] [:canvas (merge {:width 1280 :height 720} props)])}))
 

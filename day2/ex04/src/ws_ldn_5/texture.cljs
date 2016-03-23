@@ -14,11 +14,8 @@
     (set! (.-strokeStyle ctx) "none")
     (loop [y 0, cols cols]
       (if cols
-        (let [c (first cols)
-              c (if (< (mod y 16) 8)
-                  (col/adjust-brightness c -0.75)
-                  c)]
-          (set! (.-fillStyle ctx) @(col/as-css c))
+        (do
+          (set! (.-fillStyle ctx) @(col/as-css (first cols)))
           (.fillRect ctx 0 y w 1)
           (recur (inc y) (next cols)))
         (buf/make-canvas-texture gl canv opts)))))

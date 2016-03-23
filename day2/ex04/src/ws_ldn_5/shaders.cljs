@@ -1,5 +1,6 @@
 (ns ws-ldn-5.shaders
   (:require
+   [thi.ng.geom.matrix :as mat :refer [M44]]
    [thi.ng.glsl.core :as glsl :include-macros true]
    [thi.ng.glsl.vertex :as vertex]
    [thi.ng.glsl.lighting :as light]
@@ -8,7 +9,7 @@
 (glsl/defglsl tunnel-vs
   [vertex/surface-normal]
   "void main() {
-     vUV = uv + vec2(0, time * 0.025);
+     vUV = uv;
      vPos = (view * model * vec4(position, 1.0)).xyz;
      vNormal = surfaceNormal(normal, normalMat);
      vLightDir = (view * vec4(lightPos, 1.0)).xyz - vPos;
@@ -26,7 +27,7 @@
      vec3 att = lightCol / pow(length(vLightDir), lightAtt);
      vec3 diff = texture2D(tex, vUV).xyz;
      vec3 col = att * NdotL * ((1.0 - s) * diff + s * specular) + Ka * diff;
-     float fog = fogLinear(length(vPos), 1.0, 7.5);
+     float fog = fogLinear(length(vPos), 1.0, 4.5);
      col = mix(col, Kf, fog);
      gl_FragColor = vec4(col, 1.0);
    }")
@@ -34,7 +35,7 @@
 (def tunnel-shader
   {:vs       (glsl/assemble tunnel-vs)
    :fs       (glsl/assemble tunnel-fs)
-   :uniforms {:model     :mat4
+   :uniforms {:model     [:mat4 M44]
               :view      :mat4
               :proj      :mat4
               :normalMat :mat4
@@ -42,9 +43,9 @@
               :Ks        [:vec3 [1 1 1]]
               :Ka        [:vec3 [0.0 0.0 0.3]]
               :Kf        [:vec3 [0.0 0.0 0.1]]
-              :m         [:float 0.1]
-              :s         [:float 0.9]
-              :lightCol  [:vec3 [200 80 40]]
+              :m         [:float 0.5]
+              :s         [:float 0.5]
+              :lightCol  [:vec3 [1 1 1]]
               :lightPos  [:vec3 [0 0 5]]
               :lightAtt  [:float 3.0]
               :time      :float}

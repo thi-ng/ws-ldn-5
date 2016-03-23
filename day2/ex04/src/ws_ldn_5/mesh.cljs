@@ -16,15 +16,38 @@
         qc (+ 3.0 (Math/cos qt))]
     (v/vec3 (* qc (Math/cos pt)) (* qc (Math/sin pt)) (Math/sin qt))))
 
-(def path-points (mapv cinquefoil (butlast (m/norm-range 400))))
+(def path-points
+  "Evaluated points of cinquefoil knot"
+  (mapv cinquefoil (m/norm-range 400)))
+
+(def path-frames
+  "Precompute Parallel Transport Frames for each path point"
+  (-> path-points ptf/compute-frames ptf/align-frames))
+
+(defn solidify-segment
+  [seg]
+  (let [off   (- (count seg) 2)
+        front (loop [acc [], i 0, j off]
+                (if (< i 6)
+                  (let [[averts aattr] (nth seg i)
+                        [bverts battr] (nth seg j)
+                        auv            (:uv aattr)
+                        buv            (:uv battr)
+                        f1             [[(nth averts 1) (nth averts 0) (nth bverts 1) (nth bverts 0)]
+                                        {:uv [(nth auv 1) (nth auv 0) (nth buv 1) (nth buv 0)]}]]
+                    (recur (conj acc f1) (inc i) (dec j)))
+                  acc))]
+    (concat seg front)))
 
 (defn knot-simple
   []
-  (-> path-points
-      (ptf/sweep-mesh
-       (g/vertices (circle 0.5) 7)
-       {:mesh    (gl-mesh 16800 #{:fnorm :uv})
-        :attribs {:uv attr/uv-tube}
-        :align?  true
-        :loop?   true
-        :close? false})))
+  (let [profile (concat (reverse (g/vertices (circle 0.5) 7))
+                        (g/vertices (circle 0.55) 7))
+        attribs {:uv attr/uv-tube}
+        opts    {:loop? true :close? true}]
+    (->> path-frames
+         (ptf/sweep-profile profile attribs opts)
+         (partition 14)
+         (take-nth 2)
+         (mapcat solidify-segment)
+         (g/into (gl-mesh 16800 #{:fnorm :uv})))))
