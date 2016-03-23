@@ -75,6 +75,33 @@
       :aspect view-rect
       :far    10})))
 
+(defn compute-player-worldpos
+  [frames t player-state]
+  (let [player-theta (m/map-interval
+                      (get-in player-state [:pos 0])
+                      1 0 (m/radians 60) (m/radians 300))
+        n            (count (first frames))
+        t            (mod t 1.0)
+        t*n          (* t n)
+        i            (int t*n)
+        j            (mod (inc i) n)
+        fract        (- t*n i)
+
+        frame-pa     (nth (frames 0) i)
+        frame-na     (nth (frames 2) i)
+        frame-ba     (nth (frames 3) i)
+
+        frame-pb     (nth (frames 0) j)
+        frame-nb     (nth (frames 2) j)
+        frame-bb     (nth (frames 3) j)
+        a            (->> (vec2 0.3 player-theta)
+                          g/as-cartesian
+                          (ptf/sweep-point frame-pa frame-na frame-ba))
+        b            (->> (vec2 0.3 player-theta)
+                          g/as-cartesian
+                          (ptf/sweep-point frame-pb frame-nb frame-bb))]
+    (m/mix a b fract)))
+
 (defn gl-component
   [props]
   (reagent/create-class
@@ -114,12 +141,11 @@
                  hue           0.666 ;(- (* 0.25 tsin) 0.1)
                  lum           (m/map-interval tsin -1 1 0.1 0.5)
                  [bgr bgg bgb] @(col/as-rgba (col/hsla hue 1 lum))
-                 player-theta  (m/map-interval
-                                (get-in @app [:player :pos 0])
-                                0 1 (- HALF_PI) HALF_PI)
-                 player-pos    (g/rotate-z (m/* (:up cam) 0.35) player-theta)
-                 player-matrix (-> M44
-                                   (g/translate (m/- (:target cam) player-pos)))]
+                 player-pos    (compute-player-worldpos
+                                wsmesh/path-frames
+                                (+ (* t 0.025) 0.02)
+                                (:player @app))
+                 player-tx     (-> M44 (g/translate player-pos))]
              (gl/bind tex 0)
              (doto gl
                (gl/set-viewport view-rect)
@@ -141,7 +167,7 @@
                     (update :uniforms assoc
                             :time 0
                             :lightPos (:eye cam)
-                            :model player-matrix)
+                            :model player-tx)
                     (gl/inject-normal-matrix :model :view :normalMat))))
              #_(when @logo-ready
                  (img/draw gl logo-ov)))
