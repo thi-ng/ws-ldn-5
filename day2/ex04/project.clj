@@ -12,7 +12,8 @@
                   :exclusions [org.clojure/tools.reader]]
                  [thi.ng/geom "0.0.1046"]
                  [thi.ng/domus "0.3.0-SNAPSHOT"]
-                 [reagent "0.5.1"]]
+                 [reagent "0.5.1"]
+                 [cljsjs/localforage "1.3.1-0"]]
 
   :plugins      [[lein-figwheel "0.5.0-6"]
                  [lein-cljsbuild "1.1.3" :exclusions [[org.clojure/clojure]]]]

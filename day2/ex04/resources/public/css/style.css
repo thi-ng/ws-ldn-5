@@ -1,1 +1,8 @@
-.stats { position: fixed; top: 0px; left: 0px; }
+body {
+    background-color: black;
+}
+.stats {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+}

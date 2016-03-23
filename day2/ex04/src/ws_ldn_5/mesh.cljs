@@ -4,6 +4,7 @@
    [thi.ng.geom.core :as g]
    [thi.ng.geom.vector :as v :refer [vec3]]
    [thi.ng.geom.attribs :as attr]
+   [thi.ng.geom.aabb :as a]
    [thi.ng.geom.circle :refer [circle]]
    [thi.ng.geom.webgl.glmesh :refer [gl-mesh]]
    [thi.ng.geom.ptf :as ptf]))
@@ -25,10 +26,10 @@
   (-> path-points ptf/compute-frames ptf/align-frames))
 
 (defn solidify-segment
-  [seg]
+  [res seg]
   (let [off   (- (count seg) 2)
         front (loop [acc [], i 0, j off]
-                (if (< i 6)
+                (if (< i (dec res))
                   (let [[averts aattr] (nth seg i)
                         [bverts battr] (nth seg j)
                         auv            (:uv aattr)
@@ -41,13 +42,20 @@
 
 (defn knot-simple
   []
-  (let [profile (concat (reverse (g/vertices (circle 0.5) 7))
-                        (g/vertices (circle 0.55) 7))
+  (let [res     7
+        profile (concat (reverse (g/vertices (circle 0.5) res))
+                        (g/vertices (circle 0.55) res))
         attribs {:uv attr/uv-tube}
         opts    {:loop? true :close? true}]
     (->> path-frames
          (ptf/sweep-profile profile attribs opts)
-         (partition 14)
+         (partition (* res 2))
          (take-nth 2)
-         (mapcat solidify-segment)
+         (mapcat #(solidify-segment 10 %))
          (g/into (gl-mesh 16800 #{:fnorm :uv})))))
+
+(defn player
+  []
+  (-> (a/aabb 0.1)
+      (g/as-mesh {:mesh    (gl-mesh 12 #{:fnorm :uv})
+                  :attribs {:uv attr/uv-tube}})))
