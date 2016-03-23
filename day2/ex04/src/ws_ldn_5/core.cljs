@@ -11,7 +11,9 @@
    [thi.ng.geom.webgl.core :as gl]
    [thi.ng.geom.webgl.constants :as glc]
    [thi.ng.geom.webgl.animator :as anim]
+   [thi.ng.geom.webgl.buffers :as buf]
    [thi.ng.geom.webgl.shaders :as sh]
+   [thi.ng.geom.webgl.shaders.image :as img]
    [thi.ng.geom.webgl.utils :as glu]
    [thi.ng.geom.webgl.camera :as cam]
    [thi.ng.geom.core :as g]
@@ -58,23 +60,34 @@
   (reagent/create-class
    {:component-did-mount
     (fn [this]
-      (let [teeth     20
-            gl        (gl/gl-context (reagent/dom-node this))
-            view-rect (gl/get-viewport-rect gl)
-            model     (-> (wsmesh/knot-simple)
-                          (gl/as-webgl-buffer-spec {})
-                          #_(cam/apply (cam/perspective-camera {:eye (vec3 0 0 5) :fov 90 :aspect view-rect}))
-                          (assoc :shader (sh/make-shader-from-spec gl wsshader/tunnel-shader))
-                          (gl/make-buffers-in-spec gl glc/static-draw)
-                          (time))
-            tex       (wstex/gradient-texture gl 4 1024 {:wrap [glc/clamp-to-edge glc/repeat]})
-            cam       (camera-path wsmesh/path-points wsmesh/path-frames)]
+      (let [gl         (gl/gl-context (reagent/dom-node this))
+            view-rect  (gl/get-viewport-rect gl)
+            model      (-> (wsmesh/knot-simple)
+                           (gl/as-webgl-buffer-spec {})
+                           (assoc :shader (sh/make-shader-from-spec gl wsshader/tunnel-shader))
+                           (gl/make-buffers-in-spec gl glc/static-draw)
+                           (time))
+            tex        (wstex/gradient-texture gl 4 1024 {:wrap [glc/clamp-to-edge glc/repeat]})
+            logo-ready (volatile! false)
+            logo       (buf/load-texture
+                        gl {:callback (fn [tex img] (vreset! logo-ready true))
+                            :src      "img/sjo512.png"
+                            :format   glc/rgba
+                            :flip     false})
+            logo-ov    (img/make-shader-spec
+                        gl {:view-port view-rect
+                            :pos       [384 104]
+                            :width     512
+                            :height    512
+                            :state     {:tex logo}})
+            cam        (camera-path wsmesh/path-points wsmesh/path-frames)]
+        (debug logo-ov)
         (reagent/set-state this {:active true})
         (anim/animate
          (fn [t frame]
-           (let [cam           (camera-at-path-pos cam (* t 0.025) 0.02 view-rect)
-                 tsin          (Math/sin (* t 0.2))
-                 hue           (- (* 0.25 tsin) 0.1)
+           (let [cam           (camera-at-path-pos cam (* t 0.035) 0.02 view-rect)
+                 tsin          (Math/sin (+ PI (* t 0.2)))
+                 hue           0.666 ;(- (* 0.25 tsin) 0.1)
                  lum           (m/map-interval tsin -1 1 0.1 0.5)
                  [bgr bgg bgb] @(col/as-rgba (col/hsla hue 1 lum))]
              (gl/bind tex 0)
@@ -90,7 +103,9 @@
                             :Kf [bgr bgg bgb]
                             :lightPos (:eye cam)
                             :model M44)
-                    (gl/inject-normal-matrix :model :view :normalMat)))))
+                    (gl/inject-normal-matrix :model :view :normalMat))))
+             (when @logo-ready
+               (img/draw gl logo-ov)))
            (:active (reagent/state this))))))
     :component-will-unmount
     (fn [this]
