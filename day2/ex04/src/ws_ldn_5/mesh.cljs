@@ -6,6 +6,7 @@
    [thi.ng.geom.attribs :as attr]
    [thi.ng.geom.aabb :as a]
    [thi.ng.geom.circle :refer [circle]]
+   [thi.ng.geom.utils :as gu]
    [thi.ng.geom.webgl.glmesh :refer [gl-mesh]]
    [thi.ng.geom.ptf :as ptf]))
 
@@ -19,7 +20,7 @@
 
 (def path-points
   "Evaluated points of cinquefoil knot"
-  (mapv cinquefoil (m/norm-range 400)))
+  (gu/sample-uniform 0.1 false (map cinquefoil (m/norm-range 400))))
 
 (def path-frames
   "Precompute Parallel Transport Frames for each path point"
@@ -56,6 +57,7 @@
 
 (defn player
   []
-  (-> (a/aabb 0.1)
+  (-> (a/aabb 0.15 0.05 0.3)
+      (g/center)
       (g/as-mesh {:mesh    (gl-mesh 12 #{:fnorm :uv})
                   :attribs {:uv attr/uv-tube}})))

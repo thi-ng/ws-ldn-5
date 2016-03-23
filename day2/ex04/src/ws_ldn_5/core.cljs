@@ -76,31 +76,43 @@
       :far    10})))
 
 (defn compute-player-worldpos
-  [frames t player-state]
+  [[path _ norms binorms] t player-state]
   (let [player-theta (m/map-interval
                       (get-in player-state [:pos 0])
                       1 0 (m/radians 60) (m/radians 300))
-        n            (count (first frames))
+        n            (count path)
         t            (mod t 1.0)
         t*n          (* t n)
         i            (int t*n)
         j            (mod (inc i) n)
         fract        (- t*n i)
-
-        frame-pa     (nth (frames 0) i)
-        frame-na     (nth (frames 2) i)
-        frame-ba     (nth (frames 3) i)
-
-        frame-pb     (nth (frames 0) j)
-        frame-nb     (nth (frames 2) j)
-        frame-bb     (nth (frames 3) j)
-        a            (->> (vec2 0.3 player-theta)
+        pa           (nth path i)
+        na           (nth norms i)
+        ba           (nth binorms i)
+        pb           (nth path j)
+        nb           (nth norms j)
+        bb           (nth binorms j)
+        a            (->> (vec2 0.4 player-theta)
                           g/as-cartesian
-                          (ptf/sweep-point frame-pa frame-na frame-ba))
-        b            (->> (vec2 0.3 player-theta)
+                          (ptf/sweep-point pa na ba))
+        b            (->> (vec2 0.4 player-theta)
                           g/as-cartesian
-                          (ptf/sweep-point frame-pb frame-nb frame-bb))]
-    (m/mix a b fract)))
+                          (ptf/sweep-point pb nb bb))
+        pos          (m/mix a b fract)
+        fwd          (m/normalize (m/- b a))
+        up           (m/normalize (m/mix na nb fract))
+        right        (m/normalize (m/mix ba bb fract))]
+    (-> M44
+        (g/translate pos)
+        (m/* (mat/matrix44 ;; TODO add as mat/rotation-matrix-from-axes
+              (right 0) (right 1) (right 2) 0
+              (up 0) (up 1) (up 2) 0
+              (fwd 0) (fwd 1) (fwd 2) 0
+              0 0 0 1))
+        (g/rotate-z
+         (m/map-interval
+          (get-in player-state [:pos 0])
+          0 1 (m/radians -90) (m/radians 90))))))
 
 (defn gl-component
   [props]
@@ -141,11 +153,10 @@
                  hue           0.666 ;(- (* 0.25 tsin) 0.1)
                  lum           (m/map-interval tsin -1 1 0.1 0.5)
                  [bgr bgg bgb] @(col/as-rgba (col/hsla hue 1 lum))
-                 player-pos    (compute-player-worldpos
+                 player-tx     (compute-player-worldpos
                                 wsmesh/path-frames
-                                (+ (* t 0.025) 0.02)
-                                (:player @app))
-                 player-tx     (-> M44 (g/translate player-pos))]
+                                (+ (* t 0.025) 0.015)
+                                (:player @app))]
              (gl/bind tex 0)
              (doto gl
                (gl/set-viewport view-rect)
@@ -167,6 +178,8 @@
                     (update :uniforms assoc
                             :time 0
                             :lightPos (:eye cam)
+                            :m 0.1
+                            :s 0.9
                             :model player-tx)
                     (gl/inject-normal-matrix :model :view :normalMat))))
              #_(when @logo-ready
