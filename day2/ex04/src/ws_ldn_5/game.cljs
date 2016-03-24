@@ -3,6 +3,7 @@
    [thi.ng.math.macros :as mm]
    [cljs-log.core :refer [debug info warn severe]])
   (:require
+   [ws-ldn-5.config :refer [config]]
    [ws-ldn-5.camera :as wscam]
    [ws-ldn-5.shaders :as wsshader]
    [ws-ldn-5.mesh :as wsmesh]
@@ -24,12 +25,20 @@
    [thi.ng.color.core :as col]
    [reagent.core :as reagent]))
 
-(defonce app (atom {}))
+(defonce app
+  (atom {}))
 
 (defn update-player-pos!
   [x]
   (swap! app assoc-in [:player :target-pos] (/ x (g/width (:view @app)))))
 
+(defn player-normal-speed!
+  []
+  (swap! app assoc-in [:player :target-speed] (:player-speed config)))
+
+(defn player-max-speed!
+  []
+  (swap! app assoc-in [:player :target-speed] (:player-max-speed config)))
 
 (defn compute-player-worldpos
   [[path _ norms binorms] x t]
@@ -77,11 +86,12 @@
                         :format   glc/rgba
                         :flip     false})]
     (reset! app
-            {:player {:speed      0.00035
-                      :pos        0.5
-                      :target-pos 0.5
-                      :track-pos  0
-                      :laps       0}
+            {:player {:speed        0
+                      :target-speed 0.0005
+                      :pos          0.5
+                      :target-pos   0.5
+                      :track-pos    0
+                      :laps         0}
              :cam    (wscam/camera-path wsmesh/path-points wsmesh/path-frames)
              :gl     gl
              :view   view-rect
@@ -111,16 +121,21 @@
   (swap!
    app
    (fn [app]
-     (let [{:keys [pos target-pos track-pos speed laps]} (:player app)
-           tp   (+ track-pos speed)
-           laps (if (>= tp 1.0) (inc laps) laps)
-           tp   (if (>= tp 1.0) (dec tp) tp)
-           xp   (m/mix* pos target-pos 0.1)
-           cam  (wscam/camera-at-path-pos (:cam app) (- tp 0.015) 0.02 (:view app))]
+     (let [{:keys [pos target-pos track-pos speed target-speed laps]} (:player app)
+           speed (m/mix* speed target-speed 0.05)
+           tp    (+ track-pos speed)
+           laps  (if (>= tp 1.0) (inc laps) laps)
+           tp    (if (>= tp 1.0) (dec tp) tp)
+           xp    (m/mix* pos target-pos 0.1)
+           cam   (wscam/camera-at-path-pos
+                  (:cam app)
+                  (- tp (:cam-distance config))
+                  (* speed (:cam-speed-factor config)) (:view app))]
        (-> app
            (update :player merge
                    {:pos       xp
                     :track-pos tp
+                    :speed     speed
                     :laps      laps
                     :tx        (compute-player-worldpos wsmesh/path-frames xp tp)})
            (assoc-in [:scene :cam] cam))))))
@@ -133,7 +148,6 @@
           cam           (:cam scene)
           lum           (m/map-interval (Math/sin (+ PI (* t 0.2))) -1 1 0.1 0.5)
           [bgr bgg bgb] @(col/as-rgba (col/hsla 0.6666 1 lum))]
-      #_(gl/bind (:tunnel-tex scene) 0)
       (doto gl
         (gl/set-viewport view)
         (gl/clear-color-and-depth-buffer bgr bgg bgb 1 1)

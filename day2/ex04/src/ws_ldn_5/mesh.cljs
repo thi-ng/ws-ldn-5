@@ -1,5 +1,6 @@
 (ns ws-ldn-5.mesh
   (:require
+   [ws-ldn-5.config :refer [config]]
    [thi.ng.math.core :as m :refer [PI HALF_PI TWO_PI]]
    [thi.ng.geom.core :as g]
    [thi.ng.geom.vector :as v :refer [vec3]]
@@ -20,7 +21,10 @@
 
 (def path-points
   "Evaluated points of cinquefoil knot"
-  (gu/sample-uniform 0.1 false (map cinquefoil (m/norm-range 400))))
+  (gu/sample-uniform
+   (:tunnel-path-res config)
+   false
+   (map cinquefoil (m/norm-range 400))))
 
 (def path-frames
   "Precompute Parallel Transport Frames for each path point"

@@ -1,8 +1,6 @@
 body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
     background-color: black;
-}
-.stats {
-    position: fixed;
-    top: 0px;
-    left: 0px;
 }
