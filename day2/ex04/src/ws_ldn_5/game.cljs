@@ -44,7 +44,7 @@
   (swap! app assoc-in [:player :target-speed] (:player-max-speed config)))
 
 (defn compute-player-worldpos
-  [[path _ norms binorms] x t]
+  [[path tangents norms binorms] x t]
   (let [player-theta (m/map-interval x 1 0 (m/radians 60) (m/radians 300))
         n            (count path)
         t            (mod t 1.0)
@@ -52,22 +52,13 @@
         i            (int t*n)
         j            (mod (inc i) n)
         fract        (- t*n i)
-        pa           (nth path i)
-        na           (nth norms i)
-        ba           (nth binorms i)
-        pb           (nth path j)
-        nb           (nth norms j)
-        bb           (nth binorms j)
-        a            (->> (vec2 0.4 player-theta)
+        pos          (m/mix (nth path i) (nth path j) fract)
+        fwd          (m/normalize (m/mix (nth tangents i) (nth tangents j) fract))
+        up           (m/normalize (m/mix (nth norms i) (nth norms j) fract))
+        right        (m/normalize (m/mix (nth binorms i) (nth binorms j) fract))
+        pos          (->> (vec2 0.4 player-theta)
                           g/as-cartesian
-                          (ptf/sweep-point pa na ba))
-        b            (->> (vec2 0.4 player-theta)
-                          g/as-cartesian
-                          (ptf/sweep-point pb nb bb))
-        pos          (m/mix a b fract)
-        fwd          (m/normalize (m/- b a))
-        up           (m/normalize (m/mix na nb fract))
-        right        (m/normalize (m/mix ba bb fract))]
+                          (ptf/sweep-point pos up right))]
     (-> M44
         (g/translate pos)
         (m/* (mat/matrix44 ;; TODO add as mat/rotation-matrix-from-axes
@@ -93,7 +84,7 @@
                       :target-speed (:player-speed config)
                       :pos          0.5
                       :target-pos   0.5
-                      :track-pos    0
+                      :track-pos    0.02
                       :laps         0}
              :cam    (wscam/camera-path wsmesh/path-points wsmesh/path-frames)
              :gl     gl
@@ -132,7 +123,7 @@
            xp    (m/mix* pos target-pos (:steer-accel config))
            cam   (wscam/camera-at-path-pos
                   (:cam app)
-                  (- tp (:cam-distance config))
+                  (- tp (+ (:cam-distance config) (* speed (:cam-dist-factor config))))
                   (* speed (:cam-speed-factor config)) (:view app))]
        (-> app
            (update :player merge
