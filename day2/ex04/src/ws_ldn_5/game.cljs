@@ -30,7 +30,10 @@
 
 (defn update-player-pos!
   [x]
-  (swap! app assoc-in [:player :target-pos] (/ x (g/width (:view @app)))))
+  (let [w (g/width (:view @app))]
+    (swap! app assoc-in [:player :target-pos]
+           (m/map-interval-clamped
+            x (* 0.25 w) (* 0.75 w) 0 1))))
 
 (defn player-normal-speed!
   []
@@ -73,7 +76,7 @@
               (fwd 0) (fwd 1) (fwd 2) 0
               0 0 0 1))
         (g/rotate-z
-         (m/map-interval x 0 1 (m/radians -90) (m/radians 90))))))
+         (m/map-interval x 0 1 (m/radians -110) (m/radians 110))))))
 
 (defn init-game
   [this]
@@ -87,7 +90,7 @@
                         :flip     false})]
     (reset! app
             {:player {:speed        0
-                      :target-speed 0.0005
+                      :target-speed (:player-speed config)
                       :pos          0.5
                       :target-pos   0.5
                       :track-pos    0
@@ -122,11 +125,11 @@
    app
    (fn [app]
      (let [{:keys [pos target-pos track-pos speed target-speed laps]} (:player app)
-           speed (m/mix* speed target-speed 0.05)
+           speed (m/mix* speed target-speed (:accel config))
            tp    (+ track-pos speed)
            laps  (if (>= tp 1.0) (inc laps) laps)
            tp    (if (>= tp 1.0) (dec tp) tp)
-           xp    (m/mix* pos target-pos 0.1)
+           xp    (m/mix* pos target-pos (:steer-accel config))
            cam   (wscam/camera-at-path-pos
                   (:cam app)
                   (- tp (:cam-distance config))

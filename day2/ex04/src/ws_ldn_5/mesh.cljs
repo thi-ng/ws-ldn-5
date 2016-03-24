@@ -24,7 +24,7 @@
   (gu/sample-uniform
    (:tunnel-path-res config)
    false
-   (map cinquefoil (m/norm-range 400))))
+   (map cinquefoil (butlast (m/norm-range 400)))))
 
 (def path-frames
   "Precompute Parallel Transport Frames for each path point"
@@ -51,13 +51,14 @@
         profile (concat (reverse (g/vertices (circle 0.5) res))
                         (g/vertices (circle 0.55) res))
         attribs {:uv attr/uv-tube}
-        opts    {:loop? true :close? true}]
+        opts    {:loop? false :close? true}
+        size    (* (inc (bit-shift-right (count path-points) 1)) (+ (* 2 res) (dec res)) 2)]
     (->> path-frames
          (ptf/sweep-profile profile attribs opts)
          (partition (* res 2))
          (take-nth 2)
-         (mapcat #(solidify-segment 10 %))
-         (g/into (gl-mesh 16800 #{:fnorm :uv})))))
+         (mapcat #(solidify-segment res %))
+         (g/into (gl-mesh size #{:fnorm :uv})))))
 
 (defn player
   []
